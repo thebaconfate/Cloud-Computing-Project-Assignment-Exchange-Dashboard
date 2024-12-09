@@ -1,40 +1,121 @@
-import { useEffect, useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState } from 'react'
 import './App.css'
-import { io } from 'socket.io-client'
+import { Bar } from 'react-chartjs-2'
+import { BarElement, CategoryScale, Chart, Legend, LinearScale, Title, Tooltip } from 'chart.js'
+
+
+interface Order {
+    price: number,
+    quantity: number,
+    side: string
+}
+Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 function App() {
-    const [count, setCount] = useState(0)
+    const symbols = ["AAPL", "AMZN", "MSFT", "GOOGL"]
+    const data: Order[] = [
+        {
+            price: 100,
+            quantity: 50,
+            side: "ask"
+        },
+        {
+            price: 20,
+            quantity: 20,
+            side: "ask"
+        }, {
+            price: 100,
+            quantity: 50,
+            side: "ask"
+        },
+        {
+            price: 100,
+            quantity: 50,
+            side: "bid"
+        },
+    ]
+    const green = "rgb(95, 173, 63)"
+    const red = "rgb(212, 67, 47)"
+    const barData = {
+        labels: data.map((o) => o.price),
+        datasets: [
+            {
+                label: "Quantity",
+                data: data.map((d) => d.quantity),
+                backgroundColor: data.map((d) => d.side === "ask" ? green : red),
+                borderColor: data.map((d) => d.side === "ask" ? green : red).map((d) => d.replace("0.6", "1")),
+                borderWidth: 1
+            }
+        ]
+    }
 
-    useEffect(() => {
-        const socket = io("http://market-data-publisher:3001/");
-        socket.on("execution", (data) => { console.log(data) })
-    }, [])
+    const options = {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true,
+                labels: {
+                    generateLabels: () => [
+                        {
+                            text: "Bids",
+                            fillStyle: green,
+                            strokeStyle: green,
+                        },
+                        {
+                            text: "Asks",
+                            fillStyle: red,
+                            strokeStyle: red,
+                        }
+                    ]
+                }
+            },
+            title: {
+                display: true,
+                text: "Order book"
+            }
+        },
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: "Price"
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: "Quantity"
+                }
+            }
+        }
+    }
+    const [selectedSymbol, setSelectedSymbol] = useState<number>(0)
 
+    function handleSymbolChange(e: React.ChangeEvent<HTMLSelectElement>) {
+        try {
+            const newValue = parseInt(e.target.value)
+            if (newValue < symbols.length)
+                setSelectedSymbol(newValue)
+        } catch (e: any) {
+            console.error(e)
+        }
+    }
     return (
-        <>
+        <div>
+            <div className='title-container'>
+                <h1>Exchange Dashboard</h1>
+            </div>
             <div>
-                <a href="https://vite.dev" target="_blank">
-                    <img src={viteLogo} className="logo" alt="Vite logo" />
-                </a>
-                <a href="https://react.dev" target="_blank">
-                    <img src={reactLogo} className="logo react" alt="React logo" />
-                </a>
+                <select value={selectedSymbol} onChange={handleSymbolChange}>
+                    {
+                        symbols.map((symb, index) =>
+                            <option value={index}>{symb}</option>
+                        )
+                    }
+                </select>
             </div>
-            <h1>Vite + React</h1>
-            <div className="card">
-                <button onClick={() => setCount((count) => count + 1)}>
-                    count is {count}
-                </button>
-                <p>
-                    Edit <code>src/App.tsx</code> and save to test HMR
-                </p>
-            </div>
-            <p className="read-the-docs">
-                Click on the Vite and React logos to learn more
-            </p>
-        </>
+            <Bar data={barData} options={options}></Bar>
+        </div>
     )
 }
 
