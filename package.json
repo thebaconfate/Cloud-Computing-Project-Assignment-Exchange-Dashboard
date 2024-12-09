@@ -1,28 +1,29 @@
 {
   "name": "exchange-dashboard",
-  "version": "1.0.0",
-  "description": "",
-  "main": "main.js",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/thebaconfate/Cloud-Computing-Project-Assignment-Exchange-Dashboard.git"
-  },
-  "author": "Gérard Lichtert",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/thebaconfate/Cloud-Computing-Project-Assignment-Exchange-Dashboard/issues"
-  },
-  "homepage": "https://github.com/thebaconfate/Cloud-Computing-Project-Assignment-Exchange-Dashboard#readme",
   "dependencies": {
-    "express": "^4.21.1"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.7.9",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.6.3"
+    "@eslint/js": "^9.15.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.15.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.12.0",
+    "typescript": "~5.6.2",
+    "typescript-eslint": "^8.15.0",
+    "vite": "^6.0.1"
   }
 }
