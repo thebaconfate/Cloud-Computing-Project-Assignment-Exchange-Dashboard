@@ -1,21 +1,20 @@
 import { useContext, useEffect, useState } from 'react'
 import './App.css'
-import { BarElement, CategoryScale, Chart, Legend, LinearScale, Title, Tooltip } from 'chart.js'
+import { BarElement, CategoryScale, Chart, Filler, Legend, LinearScale, LineElement, PointElement, Title, Tooltip } from 'chart.js'
 import OrderBook from './OrderBook'
 import { SocketContext } from './socket'
-import { LineData, Order, OrderMap, symbols } from './lib/util'
-import AvgGraph from './AvgGraph'
+import { LineData, Order, symbols } from './lib/util'
 
 
-Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
+Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler)
 
 
 function App() {
     const [selectedSymbol, setSelectedSymbol] = useState<number>(0)
     const socket = useContext(SocketContext)
-    const [bidsMap, setBidsMap] = useState<OrderMap>(new OrderMap("bid"))
-    const [asksMap, setAsksMap] = useState<OrderMap>(new OrderMap("ask"))
-    const [lineData, setLineData] = useState<LineData>({
+    const [bids, setBids] = useState<Map<number, number>>(new Map<number, number>())
+    const [asks, setAsks] = useState<Map<number, number>>(new Map<number, number>())
+    const [_, setLineData] = useState<LineData>({
         askPrices: [],
         bidPrices: [],
         timestamps: []
@@ -33,38 +32,42 @@ function App() {
 
     useEffect(() => {
 
-        socket.on("orderBook", (orderBook: Order[]) => {
-            const newBidsMap = new OrderMap("bid");
-            const newAsksMap = new OrderMap("ask");
-            console.log(orderBook)
-            orderBook.forEach((order) => {
-                if (order.side === "ask")
-                    newAsksMap.set(order.price, +order.quantity)
-                else newBidsMap.set(order.price, +order.quantity)
-            });
-            setBidsMap(newBidsMap);
-            setAsksMap(newAsksMap);
+        socket.emit("joinRoom", symbols[selectedSymbol])
+
+        socket.on("orderBook", (orderBook: { asks: Order[], bids: Order[] }) => {
+            console.log("orderBook")
+            const newAsks = new Map<number, number>()
+            const newBids = new Map<number, number>()
+            orderBook.asks.forEach((a) => newAsks.set(a.price, a.quantity))
+            orderBook.bids.forEach((b) => newBids.set(b.price, b.quantity))
+            setBids(newBids);
+            setAsks(newAsks);
         })
 
         socket.on("updates", (orders: { asks: Order[], bids: Order[] }) => {
-            const newAsksMap = new OrderMap("ask", asksMap.map)
-            orders.asks.forEach((o) => newAsksMap.set(o.price, +o.quantity))
-            const newBidsMap = new OrderMap("bid", bidsMap.map)
-            orders.bids.forEach((o) => newBidsMap.set(o.price, +o.quantity))
-            setBidsMap(newBidsMap)
-            setAsksMap(newAsksMap)
+            console.log(orders)
         })
 
 
         socket.on("update", (order: Order) => {
+            console.log("update")
+            console.log(order)
             if (order.side === "ask") {
-                const newMap = new OrderMap("ask", asksMap.map)
-                newMap.set(order.price, +order.quantity)
-                setAsksMap(newMap)
+                setAsks(prevMap => {
+                    const newMap = new Map(prevMap)
+                    if (order.quantity === 0)
+                        newMap.delete(order.price)
+                    else newMap.set(order.price, order.quantity)
+                    return newMap
+                })
             } else {
-                const newMap = new OrderMap("bid", bidsMap.map)
-                newMap.set(order.price, +order.quantity)
-                setBidsMap(newMap)
+                setBids(prevMap => {
+                    const newMap = new Map(prevMap)
+                    if (order.quantity === 0)
+                        newMap.delete(order.price)
+                    else newMap.set(order.price, order.quantity)
+                    return newMap
+                })
             }
         })
 
@@ -84,6 +87,7 @@ function App() {
             socket.emit("leaveRoom", selectedSymbol)
         }
     }, [selectedSymbol])
+
     return (
         <div>
             <div className='title-container'>
@@ -99,10 +103,10 @@ function App() {
                 </select>
             </div>
             <div className='order-book-container'>
-                <OrderBook asksMap={asksMap} bidsMap={bidsMap} />
+                <OrderBook asksMap={asks} bidsMap={bids} />
             </div>
             <div className='average-price-per-timestamp-container'>
-                <AvgGraph data={lineData}></AvgGraph>
+                {/*     <AvgGraph data={lineData}></AvgGraph> */}
             </div>
         </div>
     )

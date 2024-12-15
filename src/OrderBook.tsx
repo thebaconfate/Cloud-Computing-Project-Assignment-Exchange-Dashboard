@@ -1,11 +1,11 @@
 import { memo } from "react";
 import { Bar } from "react-chartjs-2";
-import { Order, OrderMap } from "./lib/util";
+import { Order } from "./lib/util";
 
 
 interface Props {
-    asksMap: OrderMap,
-    bidsMap: OrderMap
+    asksMap: Map<number, number>,
+    bidsMap: Map<number, number>
 }
 
 
@@ -70,14 +70,19 @@ function makeBarChartData(data: Order[]) {
     }
 }
 
-function mapsToArray(asksMap: OrderMap, bidsMap: OrderMap) {
-    return makeBarChartData([...bidsMap.toSortedArray(false), ...asksMap.toSortedArray()])
+function mapsToArray(asksMap: Map<number, number>, bidsMap: Map<number, number>): Order[] {
+    const askData: Order[] = Array.from(asksMap.entries(), ([key, value]) => { return { price: key, quantity: value, side: "ask" } }).sort((e1, e2) => e1.price - e2.price)
+
+
+    const bidData: Order[] = Array.from(bidsMap.entries(), ([key, value]) => { return { price: key, quantity: value, side: "bid" } }).sort((e1, e2) => e2.price - e1.price)
+
+    return bidData.concat(askData)
 
 }
 
 
 const OrderBook = memo(function OrderBook({ asksMap, bidsMap }: Props) {
-    return <Bar data={mapsToArray(asksMap, bidsMap)} options={options} />
+    return <Bar data={makeBarChartData(mapsToArray(asksMap, bidsMap))} options={options} />
 })
 
 export default OrderBook
