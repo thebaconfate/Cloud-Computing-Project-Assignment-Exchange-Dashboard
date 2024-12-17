@@ -36,6 +36,7 @@ function App() {
 
         socket.on("orderBook", (orderBook: { asks: Order[], bids: Order[] }) => {
             console.log("orderBook")
+            console.log(orderBook)
             const newAsks = new Map<number, number>()
             const newBids = new Map<number, number>()
             orderBook.asks.forEach((a) => newAsks.set(a.price, a.quantity))
@@ -45,26 +46,57 @@ function App() {
         })
 
         socket.on("updates", (orders: { asks: Order[], bids: Order[] }) => {
+            console.log("updates")
             console.log(orders)
+            let minAsk = Infinity;
+            setBids(prevMap => {
+                const newMap = new Map<number, number>(prevMap)
+                orders.bids.forEach((b) => {
+                    if (b.quantity === 0)
+                        newMap.delete(b.price)
+                    else newMap.set(b.price, b.quantity)
+                })
+                for (const price of newMap.keys())
+                    if (price < minAsk)
+                        minAsk = price
+                return newMap
+            })
+            let maxBid = - Infinity
+            setAsks(prevMap => {
+                const newMap = new Map<number, number>(prevMap)
+                orders.asks.forEach((a) => {
+                    if (a.quantity === 0)
+                        newMap.delete(a.price)
+                    else newMap.set(a.price, a.quantity)
+                })
+                for (const price of newMap.keys())
+                    if (price > maxBid)
+                        maxBid = price
+                return newMap
+            })
+            if (minAsk < maxBid)
+                socket.emit("joinRoom", symbols[selectedSymbol])
         })
 
 
-        socket.on("update", (order: Order) => {
-            console.log("update")
+        socket.on("newOrder", (order: Order) => {
+            console.log("newOrder")
             console.log(order)
             if (order.side === "ask") {
                 setAsks(prevMap => {
                     const newMap = new Map(prevMap)
-                    if (order.quantity === 0)
-                        newMap.delete(order.price)
+                    const oldValue = newMap.get(order.price)
+                    if (oldValue)
+                        newMap.set(order.price, oldValue + order.quantity)
                     else newMap.set(order.price, order.quantity)
                     return newMap
                 })
             } else {
                 setBids(prevMap => {
                     const newMap = new Map(prevMap)
-                    if (order.quantity === 0)
-                        newMap.delete(order.price)
+                    const oldValue = newMap.get(order.price)
+                    if (oldValue)
+                        newMap.set(order.price, oldValue + order.quantity)
                     else newMap.set(order.price, order.quantity)
                     return newMap
                 })
@@ -82,9 +114,9 @@ function App() {
 
 
     useEffect(() => {
-        socket.emit("joinRoom", selectedSymbol)
+        socket.emit("joinRoom", symbols[selectedSymbol])
         return () => {
-            socket.emit("leaveRoom", selectedSymbol)
+            socket.emit("leaveRoom", symbols[selectedSymbol])
         }
     }, [selectedSymbol])
 

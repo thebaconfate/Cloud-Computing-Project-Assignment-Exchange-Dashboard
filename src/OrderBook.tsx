@@ -71,10 +71,35 @@ function makeBarChartData(data: Order[]) {
 }
 
 function mapsToArray(asksMap: Map<number, number>, bidsMap: Map<number, number>): Order[] {
-    const askData: Order[] = Array.from(asksMap.entries(), ([key, value]) => { return { price: key, quantity: value, side: "ask" } }).sort((e1, e2) => e1.price - e2.price)
+    const askData: Order[] = Array.from(asksMap.entries(), ([key, value]) => {
+        return {
+            price: key,
+            quantity: value,
+            side: "ask"
+        }
+    })
+        .sort((e1, e2) => e1.price - e2.price)
+        .reduce((acc: Order[], curr) => {
+            if (acc.length > 0)
+                acc.push({ ...curr, quantity: curr.quantity + acc[acc.length - 1].quantity })
+            else acc.push(curr)
+            return acc
+        }, [])
 
-
-    const bidData: Order[] = Array.from(bidsMap.entries(), ([key, value]) => { return { price: key, quantity: value, side: "bid" } }).sort((e1, e2) => e2.price - e1.price)
+    const bidData: Order[] = Array.from(bidsMap.entries(), ([key, value]) => {
+        return {
+            price: key,
+            quantity: value,
+            side: "bid"
+        }
+    })
+        .sort((e1, e2) => e1.price - e2.price)
+        .reduceRight((acc: Order[], curr) => {
+            if (acc.length > 0)
+                acc.unshift({ ...curr, quantity: curr.quantity + acc[0].quantity })
+            else acc.unshift(curr)
+            return acc
+        }, [])
 
     return bidData.concat(askData)
 
