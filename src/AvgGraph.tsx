@@ -44,24 +44,31 @@ const options: LineOptions = {
     },
     scales: {
         x: {
-            beginAtZero: true,
+            beginAtZero: false,
         },
         y: {
-            beginAtZero: true,
+            beginAtZero: false,
         },
     },
 };
 
+function formatTime(date: Date) {
+    const mins = date.getMinutes()
+    return `${date.getHours()}:${mins > 9 ? mins : "0" + mins.toString()
+        } `
+}
+
 function makeLineChartData(data: LineData) {
     return {
-        labels: data.timestamps.map((l) => `${l.getHours()}:${l.getMinutes()}`),
+        labels: data.timestamps.map((l) => {
+            return formatTime(l)
+        }),
         datasets: [
             {
                 label: "asks",
                 data: data.askPrices,
                 borderColor: blue,
                 backgroundColor: blue.replace("1)", "0.2)"),
-                fill: true,
                 tension: 0
             },
             {
@@ -69,7 +76,6 @@ function makeLineChartData(data: LineData) {
                 data: data.bidPrices,
                 borderColor: green,
                 backgroundColor: green.replace("1)", "0.2"),
-                fill: true,
                 tension: 0
             }
 

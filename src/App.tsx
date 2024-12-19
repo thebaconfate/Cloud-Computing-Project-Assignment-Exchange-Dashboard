@@ -3,18 +3,31 @@ import './App.css'
 import { BarElement, CategoryScale, Chart, Filler, Legend, LinearScale, LineElement, PointElement, Title, Tooltip } from 'chart.js'
 import OrderBook from './OrderBook'
 import { SocketContext } from './socket'
-import { LineData, Order, symbols } from './lib/util'
+import { AveragePricePerStimeStampInit, AveragePricePerTimeStamp, LineData, Order, symbols } from './lib/util'
+import AvgGraph from './AvgGraph'
 
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, PointElement, LineElement, Filler)
 
 
+function orderMapToPriceMap(orderMap: Map<number, Order>) {
+    const priceMap = new Map<number, number>()
+    for (const order of orderMap.values()) {
+        const quantity = priceMap.get(order.price)
+        if (quantity)
+            priceMap.set(order.price, quantity + order.quantity)
+        else priceMap.set(order.price, order.quantity)
+    }
+    return priceMap
+}
+
 function App() {
     const [selectedSymbol, setSelectedSymbol] = useState<number>(0)
     const socket = useContext(SocketContext)
-    const [bids, setBids] = useState<Map<number, number>>(new Map<number, number>())
-    const [asks, setAsks] = useState<Map<number, number>>(new Map<number, number>())
-    const [_, setLineData] = useState<LineData>({
+    const [bids, setBids] = useState<Map<number, Order>>(new Map<number, Order>())
+    const [asks, setAsks] = useState<Map<number, Order>>(new Map<number, Order>())
+    const [check, setCheck] = useState(true)
+    const [averagePrices, setAveragePrices] = useState<LineData>({
         askPrices: [],
         bidPrices: [],
         timestamps: []
@@ -35,76 +48,106 @@ function App() {
         socket.emit("joinRoom", symbols[selectedSymbol])
 
         socket.on("orderBook", (orderBook: { asks: Order[], bids: Order[] }) => {
-            console.log("orderBook")
-            console.log(orderBook)
-            const newAsks = new Map<number, number>()
-            const newBids = new Map<number, number>()
-            orderBook.asks.forEach((a) => newAsks.set(a.price, a.quantity))
-            orderBook.bids.forEach((b) => newBids.set(b.price, b.quantity))
+            const newAsks = new Map<number, Order>()
+            const newBids = new Map<number, Order>()
+            orderBook.asks.forEach((a) => newAsks.set(a.secnum, a))
+            orderBook.bids.forEach((b) => newBids.set(b.secnum, b))
             setBids(newBids);
             setAsks(newAsks);
+            setCheck(false)
         })
 
         socket.on("updates", (orders: { asks: Order[], bids: Order[] }) => {
-            console.log("updates")
-            console.log(orders)
-            let minAsk = Infinity;
             setBids(prevMap => {
-                const newMap = new Map<number, number>(prevMap)
+                const newMap = new Map<number, Order>(prevMap)
                 orders.bids.forEach((b) => {
-                    if (b.quantity === 0)
-                        newMap.delete(b.price)
-                    else newMap.set(b.price, b.quantity)
+                    const order = newMap.get(b.secnum)
+                    if (order) {
+                        const newQuantity = order.quantity - b.quantity
+                        if (newQuantity <= 0)
+                            newMap.delete(order.secnum)
+                        else newMap.set(b.secnum, { ...order, quantity: newQuantity })
+                    }
                 })
-                for (const price of newMap.keys())
-                    if (price < minAsk)
-                        minAsk = price
                 return newMap
             })
-            let maxBid = - Infinity
             setAsks(prevMap => {
-                const newMap = new Map<number, number>(prevMap)
+                const newMap = new Map<number, Order>(prevMap)
                 orders.asks.forEach((a) => {
-                    if (a.quantity === 0)
-                        newMap.delete(a.price)
-                    else newMap.set(a.price, a.quantity)
+                    const order = newMap.get(a.secnum);
+                    if (order) {
+                        const newQuantity = order.quantity - a.quantity
+                        if (newQuantity <= 0)
+                            newMap.delete(order.secnum)
+                        else newMap.set(a.secnum, { ...order, quantity: newQuantity })
+                    }
                 })
-                for (const price of newMap.keys())
-                    if (price > maxBid)
-                        maxBid = price
                 return newMap
             })
-            if (minAsk < maxBid)
-                socket.emit("joinRoom", symbols[selectedSymbol])
+            setCheck(true)
         })
 
 
         socket.on("newOrder", (order: Order) => {
-            console.log("newOrder")
-            console.log(order)
             if (order.side === "ask") {
                 setAsks(prevMap => {
                     const newMap = new Map(prevMap)
-                    const oldValue = newMap.get(order.price)
-                    if (oldValue)
-                        newMap.set(order.price, oldValue + order.quantity)
-                    else newMap.set(order.price, order.quantity)
+                    newMap.set(order.secnum, order)
                     return newMap
                 })
             } else {
                 setBids(prevMap => {
                     const newMap = new Map(prevMap)
-                    const oldValue = newMap.get(order.price)
-                    if (oldValue)
-                        newMap.set(order.price, oldValue + order.quantity)
-                    else newMap.set(order.price, order.quantity)
+                    newMap.set(order.secnum, order)
                     return newMap
                 })
             }
+            setCheck(false)
         })
 
-        socket.on("avgPricePerMin", (lineData: LineData) => {
-            setLineData(lineData)
+        socket.on("avgPricesPerMin", (lineData: AveragePricePerStimeStampInit) => {
+            const newLineData: LineData = {
+                askPrices: lineData.asks.map((e) => e.price),
+                bidPrices: lineData.bids.map((e) => e.price),
+                timestamps: lineData.bids.map((e) => new Date(e.interval))
+            }
+            setAveragePrices(newLineData)
+        })
+
+        socket.on("avgPricePerMin", (lineData: { asks: AveragePricePerTimeStamp, bids: AveragePricePerTimeStamp }) => {
+            setAveragePrices((prev) => {
+                return {
+                    askPrices: [...prev.askPrices, lineData.asks.price],
+                    bidPrices: [...prev.bidPrices, lineData.bids.price],
+                    timestamps: [...prev.timestamps, new Date(lineData.bids.interval)]
+                }
+            })
+        })
+
+
+        socket.on("delete", (order: Order) => {
+            const handleUpdate = (prev: Map<number, Order>) => {
+                const newAsks = new Map(prev)
+                newAsks.delete(order.secnum)
+                return newAsks
+            }
+            if (order.side === 'ask') setAsks(handleUpdate)
+            else setBids(handleUpdate)
+            setCheck(true)
+        })
+
+        socket.on("update", (order: Order) => {
+            const handleUpdate = (prev: Map<number, Order>) => {
+                const prevOrder = prev.get(order.secnum)
+                if (!prevOrder) return prev
+                if (prevOrder.quantity <= order.quantity) return prev
+                const newMap = new Map(prev)
+                newMap.set(order.secnum, order)
+                return newMap
+            }
+            if (order.side === "ask") setAsks(handleUpdate)
+            else setBids(handleUpdate)
+            setCheck(true)
         })
 
         return () => {
@@ -119,6 +162,28 @@ function App() {
             socket.emit("leaveRoom", symbols[selectedSymbol])
         }
     }, [selectedSymbol])
+
+    useEffect(() => {
+        if (!check) return
+        type Checker = {
+            secnum: null | number;
+            price: number
+        }
+        let maxBid: Checker | Order = { secnum: null, price: -Infinity }
+        let minAsk: Checker | Order = { secnum: null, price: Infinity }
+        for (const order of bids.values()) {
+            if (order.price > maxBid.price)
+                maxBid = order
+        }
+        for (const order of asks.values()) {
+            if (order.price < minAsk.price)
+                minAsk = order
+        }
+        if (maxBid.price > minAsk.price) {
+            socket.emit("getCorrection", { ask: minAsk, bid: maxBid })
+            setCheck(false)
+        }
+    }, [check])
 
     return (
         <div>
@@ -135,10 +200,10 @@ function App() {
                 </select>
             </div>
             <div className='order-book-container'>
-                <OrderBook asksMap={asks} bidsMap={bids} />
+                <OrderBook asksMap={orderMapToPriceMap(asks)} bidsMap={orderMapToPriceMap(bids)} />
             </div>
             <div className='average-price-per-timestamp-container'>
-                {/*     <AvgGraph data={lineData}></AvgGraph> */}
+                <AvgGraph data={averagePrices}></AvgGraph>
             </div>
         </div>
     )

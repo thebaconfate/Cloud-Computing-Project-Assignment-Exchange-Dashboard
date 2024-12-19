@@ -1,15 +1,30 @@
 export const symbols = ["AAPL", "AMZN", "MSFT", "GOOGL"];
 export interface Order {
-  // NOTE: price is actually a string from the socket.io event emitter but
-  // as long as no addition (or in this case concatenation is done)
-  // there shouldn't be any problems
+  secnum: number;
   price: number;
   quantity: number;
-  side?: "ask" | "bid" | string;
+  side: "ask" | "bid";
+}
+
+export interface BarData {
+  price: number;
+  quantity: number;
+  side: string;
 }
 
 export interface LineData {
   askPrices: number[];
   bidPrices: number[];
   timestamps: Date[];
+}
+
+export interface AveragePricePerTimeStamp {
+  price: number;
+  interval: Date;
+  side: "ask" | "bid";
+}
+
+export interface AveragePricePerStimeStampInit {
+  asks: AveragePricePerTimeStamp[];
+  bids: AveragePricePerTimeStamp[];
 }

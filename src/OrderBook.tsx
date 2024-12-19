@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Bar } from "react-chartjs-2";
-import { Order } from "./lib/util";
+import { BarData } from "./lib/util";
 
 
 interface Props {
@@ -54,7 +54,7 @@ const options = {
 }
 
 
-function makeBarChartData(data: Order[]) {
+function makeBarChartData(data: BarData[]) {
     return {
         labels: data.map((order) => order.price),
         datasets: [
@@ -70,8 +70,8 @@ function makeBarChartData(data: Order[]) {
     }
 }
 
-function mapsToArray(asksMap: Map<number, number>, bidsMap: Map<number, number>): Order[] {
-    const askData: Order[] = Array.from(asksMap.entries(), ([key, value]) => {
+function mapsToArray(asksMap: Map<number, number>, bidsMap: Map<number, number>): BarData[] {
+    const askData: BarData[] = Array.from(asksMap.entries(), ([key, value]) => {
         return {
             price: key,
             quantity: value,
@@ -79,14 +79,14 @@ function mapsToArray(asksMap: Map<number, number>, bidsMap: Map<number, number>)
         }
     })
         .sort((e1, e2) => e1.price - e2.price)
-        .reduce((acc: Order[], curr) => {
+        .reduce((acc: BarData[], curr) => {
             if (acc.length > 0)
                 acc.push({ ...curr, quantity: curr.quantity + acc[acc.length - 1].quantity })
             else acc.push(curr)
             return acc
         }, [])
 
-    const bidData: Order[] = Array.from(bidsMap.entries(), ([key, value]) => {
+    const bidData: BarData[] = Array.from(bidsMap.entries(), ([key, value]) => {
         return {
             price: key,
             quantity: value,
@@ -94,7 +94,7 @@ function mapsToArray(asksMap: Map<number, number>, bidsMap: Map<number, number>)
         }
     })
         .sort((e1, e2) => e1.price - e2.price)
-        .reduceRight((acc: Order[], curr) => {
+        .reduceRight((acc: BarData[], curr) => {
             if (acc.length > 0)
                 acc.unshift({ ...curr, quantity: curr.quantity + acc[0].quantity })
             else acc.unshift(curr)
