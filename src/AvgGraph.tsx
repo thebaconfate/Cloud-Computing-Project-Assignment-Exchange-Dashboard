@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Line } from "react-chartjs-2";
 import { LineData } from "./lib/util";
+import { TooltipItem } from "chart.js";
 interface Props {
     data: LineData,
 }
@@ -20,13 +21,18 @@ type LineOptions = {
         tooltip: {
             mode: "index",
             intersect: boolean
+            callbacks: {
+                labelColor: any
+            }
         }
     },
     scales: {
         x: {
+            title: { display: boolean, text: string },
             beginAtZero: boolean
         },
         y: {
+            title: { display: boolean, text: string },
             beginAtZero: boolean
         }
     }
@@ -40,13 +46,25 @@ const options: LineOptions = {
         tooltip: {
             mode: "index",
             intersect: false,
+            callbacks: {
+                labelColor: function(context: TooltipItem<'line'>) {
+                    const dataset = context.dataset;
+                    return {
+                        borderColor: dataset.borderColor as string,
+                        backgroundColor: dataset.borderColor as string,
+                        borderWidth: dataset.borderWidth
+                    }
+                }
+            }
         },
     },
     scales: {
         x: {
+            title: { display: true, text: "Time" },
             beginAtZero: false,
         },
         y: {
+            title: { display: true, text: "Average price" },
             beginAtZero: false,
         },
     },
