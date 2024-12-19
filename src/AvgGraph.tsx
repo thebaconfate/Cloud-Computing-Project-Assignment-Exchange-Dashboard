@@ -69,6 +69,7 @@ function makeLineChartData(data: LineData) {
                 data: data.askPrices,
                 borderColor: blue,
                 backgroundColor: blue.replace("1)", "0.2)"),
+                borderWidth: 2,
                 tension: 0
             },
             {
@@ -76,6 +77,7 @@ function makeLineChartData(data: LineData) {
                 data: data.bidPrices,
                 borderColor: green,
                 backgroundColor: green.replace("1)", "0.2"),
+                borderWidth: 2,
                 tension: 0
             }
 
